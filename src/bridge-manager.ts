@@ -35,24 +35,38 @@ export class BridgeManager {
     const output = await this.orgo.bash(curlCmd);
 
     try {
-      return JSON.parse(output.trim());
-    } catch {
+      // The output may contain the bridge's JSON response.
+      // Strip any leading/trailing whitespace and try to find JSON.
+      const trimmed = output.trim();
+      if (!trimmed || trimmed === "") {
+        throw new Error("Bridge returned empty response");
+      }
+      return JSON.parse(trimmed);
+    } catch (e) {
+      // If the output contains non-JSON prefix (e.g. from curl), try to find JSON
+      const jsonStart = output.indexOf("{");
+      if (jsonStart >= 0) {
+        try {
+          return JSON.parse(output.slice(jsonStart));
+        } catch { /* fall through */ }
+      }
       throw new Error(`Bridge returned non-JSON: ${output.slice(0, 200)}`);
     }
   }
 
   /** Ensure the bridge is running inside the VM. Deploy if needed. */
   private async ensureBridge(): Promise<void> {
-    if (this.deployed) {
-      // Quick health check
-      try {
-        const output = await this.orgo.bash(
-          `curl -sf http://127.0.0.1:${BRIDGE_PORT}/health 2>/dev/null || echo '{"status":"down"}'`
-        );
-        const health = JSON.parse(output.trim());
-        if (health.status === "ok") return;
-      } catch { /* bridge is down, redeploy */ }
-    }
+    // Always try health check first — bridge may already be running
+    try {
+      const output = await this.orgo.bash(
+        `curl -sf http://127.0.0.1:${BRIDGE_PORT}/health 2>/dev/null || echo '{"status":"down"}'`
+      );
+      const health = JSON.parse(output.trim());
+      if (health.status === "ok") {
+        this.deployed = true;
+        return;
+      }
+    } catch { /* bridge is down, deploy */ }
 
     await this.deploy();
   }

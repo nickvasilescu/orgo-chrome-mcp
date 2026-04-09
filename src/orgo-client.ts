@@ -30,8 +30,11 @@ export class OrgoClient {
       throw new Error(`Orgo bash failed (${res.status}): ${text}`);
     }
 
-    const data = await res.json() as { output?: string; stdout?: string; result?: string };
-    return data.output || data.stdout || data.result || "";
+    const data = await res.json() as { output?: string; stdout?: string; result?: string; error?: string };
+    if (data.error) {
+      throw new Error(`Orgo bash error: ${data.error}`);
+    }
+    return data.output ?? data.stdout ?? data.result ?? "";
   }
 
   /** Ensure the computer is running. */

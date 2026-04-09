@@ -73,6 +73,15 @@ registerFormInputTool(server, bridge);
 // Start Server
 // ============================================================================
 
+// Prevent unhandled rejections from crashing the process
+process.on("unhandledRejection", (err) => {
+  console.error("[orgo-chrome-mcp] Unhandled rejection:", err);
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("[orgo-chrome-mcp] Uncaught exception:", err);
+});
+
 async function main() {
   console.error("[orgo-chrome-mcp] Starting MCP server...");
   console.error(`[orgo-chrome-mcp] Computer: ${ORGO_COMPUTER_ID}`);
