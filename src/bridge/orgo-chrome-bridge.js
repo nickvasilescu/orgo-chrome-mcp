@@ -401,6 +401,15 @@ function handleCdpMessage(data) {
       entry.mimeType = msg.params.response.mimeType;
     }
   }
+
+  // Clear stale element refs on page navigation
+  if (msg.method === "Page.frameNavigated" && msg.params.frame && !msg.params.frame.parentId) {
+    // Top-level frame navigated — clear all refs
+    cdpSend("Runtime.evaluate", {
+      expression: "window.__orgoElementMap = {}; window.__orgoRefCounter = 0; 'refs_cleared'",
+      returnByValue: true
+    }).catch(() => { /* page may not be ready yet */ });
+  }
 }
 
 // ============================================================================
@@ -788,6 +797,15 @@ const handlers = {
       });
     }
     return { success: true, targetId: body.targetId };
+  },
+
+  "POST /resize": async (body) => {
+    const width = body.width || 1280;
+    const height = body.height || 720;
+    await cdpSend("Emulation.setDeviceMetricsOverride", {
+      width, height, deviceScaleFactor: 1, mobile: false
+    });
+    return { success: true, width, height };
   },
 };
 
